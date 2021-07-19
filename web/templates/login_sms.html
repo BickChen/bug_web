@@ -1,0 +1,122 @@
+{% extends 'layout/basic.html' %}
+{% load static %}
+
+{% block title %}用户登陆{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static 'css/acount.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="account">
+        <div class="title">短信用户登陆</div>
+        <form id="form" method="post" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                {% if field.name == 'code' %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <div class="row">
+                            <div class="col-xs-7">
+                                {{ field }}
+                                <span class="error-msg" id="aaa"></span>
+                            </div>
+                            <div class="col-xs-5">
+                                <input id="btnSms" type="button" class="btn btn-primary" value="点击获取验证码">
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        <span class="error-msg"></span>
+                    </div>
+                {% endif %}
+            {% endfor%}
+        </form>
+        <div class="checkbox">
+            <div style="float: right;">
+                <a href="{% url 'login' %}">用户名密码登陆？</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-3">
+                <input id="login_sms" type="button" class="btn btn-primary" value="登   陆">
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $(function () {
+            bindClickBtnSms();
+            userLoginSms();
+        });
+
+        function bindClickBtnSms() {
+            $('#btnSms').click(function () {
+                $('.error-msg').empty()
+
+                var phone = $("#id_phone").val();
+
+                $.ajax({
+                    url: "{% url 'send_sms' %}",
+                    type: "GET",
+                    data: {phone: phone, tpl: "login"},
+                    dataType: "JSON",
+                    success: function (res) {
+                        /*console.log($("#id_phone").next())*/
+                        if (res.status){
+                            sendSmsRemind();
+                        } else {
+                            $.each(res.error, function (key, value) {
+                                $("#id_" + key).next().text(value[0]);
+                            })
+                        }
+                    }
+                    }
+                )
+            })
+        }
+
+        function sendSmsRemind() {
+            var $smsBtn = $('#btnSms');
+            $smsBtn.prop('disabled', true);
+            var time = 60;
+
+            var remind = setInterval(function () {
+                $smsBtn.val(time + '秒重新发送');
+                time = time -1;
+                if (time < 1){
+                    clearInterval(remind);
+                    $smsBtn.val('点击获取验证码').prop('disabled', false)
+                }
+            }, 1000)
+        }
+
+        function userLoginSms() {
+            $('#login_sms').click(function () {
+                $('.error-msg').empty()
+                $.ajax({
+                    url: "{% url 'login_sms' %}",
+                    type: "POST",
+                    data: $('#form').serialize(),
+                    dataType: "JSON",
+                    success: function (res) {
+                        if (res.status){
+                            location.href = res.data
+                        } else {
+                            $.each(res.error, function (key, value) {
+                                $("#id_" + key).next().text(value[0]);
+                            })
+                        }
+                    }
+                })
+            })
+
+        }
+    </script>
+
+{% endblock %}
